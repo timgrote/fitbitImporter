@@ -1,0 +1,9 @@
+# This folder contains Google Takeout ZIP files
+# 
+# Instructions:
+# 1. Download your Fitbit data from Google Takeout (https://takeout.google.com)
+# 2. Drop the downloaded ZIP files into this folder
+# 3. Run: python main.py process-takeout
+#
+# The ZIP files will be processed and the data extracted to the /data folder.
+# Your ZIP files are automatically git-ignored for privacy.

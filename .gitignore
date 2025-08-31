@@ -41,7 +41,8 @@ fitbit-api-secrets.txt
 
 # Personal health data folders - NEVER commit personal data
 data/
-takeout_data/
+takeout_data/*
+!takeout_data/.gitkeep
 fitbit_download/
 fitbit_downloads/
 existing_data/

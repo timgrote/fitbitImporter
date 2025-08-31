@@ -35,6 +35,15 @@ Fitbit Data Importer combines the best of both worlds:
 
 ## 🚀 Quick Start
 
+### ⚡ Ultra-Simple Workflow
+1. **Setup**: `cp myfitbit.ini.template myfitbit.ini` → Add your Fitbit API credentials
+2. **Takeout**: Drop ZIP files in `takeout_data/` → Run `python main.py process-takeout`  
+3. **Stay Current**: Run `python main.py update` whenever you want new data
+
+That's it! Zero path configuration, zero date management. ✨
+
+---
+
 ### 1. Installation
 
 ```bash
@@ -55,10 +64,9 @@ This gives you years of data instantly:
    - Choose ZIP format, click "Create export"
    - Download the ZIP file(s) when ready
 
-2. **Place Your Data**:
+2. **Drop Your Data**:
    ```bash
-   mkdir takeout_data
-   # Drop your downloaded ZIP files into takeout_data/
+   # Just drop your downloaded ZIP files into the takeout_data/ folder
    mv ~/Downloads/takeout-*.zip takeout_data/
    ```
 
@@ -85,19 +93,21 @@ This gives you years of data instantly:
    [fitbit]
    client_id = YOUR_CLIENT_ID
    client_secret = YOUR_CLIENT_SECRET
+   ```
+
+   That's it! No date configuration needed - the smart updater handles everything automatically.
+
+3. **Stay Up to Date**:
+   ```bash
+   # Smart update: automatically downloads only missing/new data
+   python main.py update
+   ```
    
-   [export]
-   start_date = 2024-08-29
-   end_date = 2024-08-31
-   ```
-
-3. **Download Recent Data**:
+   Or manually:
    ```bash
+   # Download specific date range
    python main.py export
-   ```
-
-4. **Merge Everything**:
-   ```bash
+   # Then merge with existing data  
    python main.py merge
    ```
 
@@ -106,34 +116,67 @@ This gives you years of data instantly:
 ### Core Commands
 
 ```bash
-# Process Google Takeout ZIP files
-python main.py process-takeout --takeout-folder takeout_data
+# Process Google Takeout ZIP files (one-time setup)
+python main.py process-takeout
 
-# Download data via Fitbit API for specific date range
-python main.py export --config myfitbit.ini
+# Smart update: automatically download only missing/new data 
+python main.py update
 
 # Analyze your data and identify gaps
 python main.py analyze
 
-# Merge API downloads with Takeout data
+# Merge API downloads with Takeout data (usually automatic with update)
 python main.py merge
+
+# Download data via Fitbit API for specific date range (advanced)
+python main.py export --config myfitbit.ini
 
 # See all options
 python main.py --help
 ```
 
+**🎯 Zero Configuration**: All folder locations are pre-configured in `myfitbit.ini`. Just add your API credentials and go!
+
+### Smart Update Features
+
+The smart update command automatically detects what data you're missing and downloads only what's needed:
+
+```bash
+# Full smart update (recommended)
+python main.py update
+
+# Preview what would be downloaded
+python main.py update --dry-run
+
+# Only get recent data (last 7 days by default)
+python main.py update --recent-only
+
+# Only fill gaps in historical data
+python main.py update --fill-gaps
+```
+
+**Smart update automatically:**
+- 📅 Detects your latest data date
+- 🔍 Identifies gaps in priority data types (heart rate, sleep, activity)
+- ⏰ Downloads recent data to keep you current
+- 🧠 Merges new data with existing dataset
+- ⚡ Optimizes for Fitbit's 150 requests/hour rate limit
+
 ### Advanced Usage
 
 ```bash
-# Analyze specific folder
-python main.py analyze --data-folder my_data --export-gaps
+# Export gaps analysis to CSV
+python main.py analyze --export-gaps
 
 # Dry run merge (see what would happen)
 python main.py merge --dry-run
 
-# Process Takeout data to custom folder
-python main.py process-takeout --output-folder processed_data
+# Use custom config file
+python main.py process-takeout --config my_custom.ini
+python main.py update --config my_custom.ini
 ```
+
+**Note**: All folder paths are now configured in the `[paths]` section of your `myfitbit.ini` file instead of command-line arguments.
 
 ## 📁 Data Organization
 

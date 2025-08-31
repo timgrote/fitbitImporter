@@ -4,13 +4,15 @@
 import sys
 import os
 import click
-from datetime import datetime, timedelta
 from pathlib import Path
-import pandas as pd
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load environment variables if available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv is optional
+    pass
 
 @click.group()
 def cli():
@@ -109,41 +111,60 @@ def export(start_date, end_date, config, output_dir, use_myfitbit, debug):
         click.echo("For now, using myfitbit is recommended.")
 
 @cli.command()
-@click.option('--takeout-folder', default='takeout_data', help='Folder with Google Takeout ZIPs')
-@click.option('--output-folder', default='data', help='Output folder for processed data')
-def process_takeout(takeout_folder, output_folder):
-    """Process Google Takeout Fitbit data."""
-    from .takeout_processor import TakeoutProcessor
+@click.option('--config', default='myfitbit.ini', help='Path to config file')
+def process_takeout(config):
+    """Process Google Takeout Fitbit data.
+    
+    Folder locations are configured in myfitbit.ini under the [paths] section.
+    By default, looks for ZIP files in 'takeout_data/' and outputs to 'data/'.
+    """
+    try:
+        from .takeout_processor import TakeoutProcessor
+    except ImportError as e:
+        if 'pandas' in str(e):
+            click.echo("❌ Missing required dependency: pandas")
+            click.echo("\nTo install:")
+            click.echo("  pip install pandas")
+            click.echo("  # Or install all dependencies:")
+            click.echo("  pip install -r requirements.txt")
+            sys.exit(1)
+        else:
+            raise
     
     click.echo("Processing Google Takeout data...")
-    processor = TakeoutProcessor(takeout_folder, output_folder)
+    processor = TakeoutProcessor(config_file=config)
     processor.process_all()
 
 @cli.command()
-@click.option('--data-folder', default='data', help='Data folder to analyze')
+@click.option('--config', default='myfitbit.ini', help='Path to config file')
 @click.option('--export-gaps', is_flag=True, help='Export gaps to CSV')
-def analyze(data_folder, export_gaps):
-    """Analyze data coverage and identify gaps."""
+def analyze(config, export_gaps):
+    """Analyze data coverage and identify gaps.
+    
+    Data folder location is configured in myfitbit.ini under the [paths] section.
+    """
     from .data_analyzer import DataAnalyzer
     
-    analyzer = DataAnalyzer(data_folder=data_folder)
+    analyzer = DataAnalyzer(config_file=config)
     analyzer.print_report()
     
     if export_gaps:
         analyzer.export_gaps_csv()
 
 @cli.command()
-@click.option('--data-folder', default='data', help='Processed data folder')
-@click.option('--api-folder', default='fitbit_download', help='API downloads folder')
+@click.option('--config', default='myfitbit.ini', help='Path to config file')
 @click.option('--dry-run', is_flag=True, help='Show what would be merged without doing it')
-def merge(data_folder, api_folder, dry_run):
-    """Merge API downloads with processed Takeout data."""
+def merge(config, dry_run):
+    """Merge API downloads with processed Takeout data.
+    
+    Folder locations are configured in myfitbit.ini under the [paths] section.
+    """
     from .data_merger import DataMerger
     
     if dry_run:
         click.echo("🧪 DRY RUN MODE - No files will be modified")
         
-    merger = DataMerger(data_folder=data_folder, api_folder=api_folder)
+    merger = DataMerger(config_file=config)
     
     if dry_run:
         # Just show what would be merged
@@ -164,6 +185,40 @@ def merge(data_folder, api_folder, dry_run):
     else:
         results = merger.merge_all_data()
         merger.print_merge_summary(results)
+
+@cli.command()
+@click.option('--config', default='myfitbit.ini', help='Path to Fitbit config file')
+@click.option('--dry-run', is_flag=True, help='Show what would be downloaded without doing it')
+@click.option('--recent-only', is_flag=True, help='Only download recent data, skip gap filling')
+@click.option('--fill-gaps', is_flag=True, help='Only fill gaps, skip recent data')
+def update(config, dry_run, recent_only, fill_gaps):
+    """Smart update: automatically download missing Fitbit data.
+    
+    This command analyzes your existing data and intelligently downloads only 
+    what's missing or new. Perfect for keeping your dataset current after
+    initial Takeout processing.
+    
+    Folder locations are configured in myfitbit.ini under the [paths] section.
+    
+    Examples:
+      python main.py update                    # Full smart update
+      python main.py update --dry-run          # See what would be downloaded
+      python main.py update --recent-only      # Only get recent data, skip gaps
+      python main.py update --fill-gaps        # Only fill gaps, skip recent data
+    """
+    from .smart_updater import SmartUpdater
+    
+    # Check config file exists
+    config_path = Path(config)
+    if not config_path.exists():
+        click.echo(f"\n❌ Config file not found: {config}")
+        click.echo("Please create myfitbit.ini with your Fitbit API credentials")
+        sys.exit(1)
+    
+    updater = SmartUpdater(config_file=config)
+    results = updater.run_update(dry_run=dry_run, recent_only=recent_only, 
+                               fill_gaps=fill_gaps)
+    updater.print_final_summary(results)
 
 if __name__ == "__main__":
     cli()
