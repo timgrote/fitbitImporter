@@ -34,25 +34,24 @@ jobs:
         path: fitbit-importer-linux-amd64
 
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
     - uses: actions/checkout@v4
     
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: '1.23'
-    
-    - name: Setup TDM-GCC
-      uses: egor-tensin/setup-gcc@v1
-      with:
-        version: latest
-        platform: x64
+        
+    - name: Install pkg-config
+      run: |
+        choco install pkgconfiglite
         
     - name: Build Windows binary
-      run: go build -o fitbit-importer-windows-amd64.exe cmd/main.go
-      env:
-        CGO_ENABLED: 1
+      run: |
+        $env:CGO_ENABLED = "1"
+        go build -ldflags "-H windowsgui" -o fitbit-importer-windows-amd64.exe cmd/main.go
+      shell: powershell
       
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v3
