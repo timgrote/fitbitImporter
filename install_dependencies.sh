@@ -24,7 +24,11 @@ apt install -y python3-pip
 
 # Install Fitbit API libraries via pip
 echo "💓 Installing Fitbit API libraries..."
-pip3 install --break-system-packages fitbit python-fitbit myfitbit
+pip3 install --break-system-packages fitbit myfitbit
+
+# Install dashboard and visualization libraries
+echo "📊 Installing dashboard dependencies..."
+pip3 install --break-system-packages streamlit plotly seaborn
 
 # Install optional packages for better experience
 echo "✨ Installing optional packages..."
@@ -42,5 +46,11 @@ cd /home/tim/repos/fitbitImporter
 python3 main.py --help
 
 echo ""
-echo "🎯 Ready to test process-takeout command!"
-echo "Run: python3 main.py process-takeout"
+echo "🧪 Testing dashboard dependencies..."
+python3 -c "import streamlit; print('✅ Streamlit version:', streamlit.__version__)" 2>/dev/null || echo "❌ Streamlit installation failed"
+python3 -c "import plotly; print('✅ Plotly version:', plotly.__version__)" 2>/dev/null || echo "❌ Plotly installation failed"
+
+echo ""
+echo "🎯 Ready to test commands!"
+echo "Data processing: python3 main.py process-takeout"
+echo "Health dashboard: streamlit run dashboard.py"
