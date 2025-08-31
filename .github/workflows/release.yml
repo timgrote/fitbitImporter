@@ -46,13 +46,25 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-    - name: Download all artifacts
+    - name: Download Linux artifact
       uses: actions/download-artifact@v3
+      with:
+        name: fitbit-importer-linux-amd64
+        path: ./dist/
+        
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: fitbit-importer-windows-amd64.exe
+        path: ./dist/
+      
+    - name: List files
+      run: ls -la dist/
       
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: '**/*'
+        files: dist/*
         generate_release_notes: true
         body: |
           ## Cross-platform binaries
