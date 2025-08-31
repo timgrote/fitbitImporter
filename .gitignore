@@ -1,0 +1,49 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Build artifacts
+/build/
+/dist/
+/bin/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Application-specific
+# Config files with credentials
+config.json
+.env
+*.env
+
+# Downloaded data (users shouldn't commit their personal data)
+/data/
+/exports/
+/fitbit_data/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
