@@ -1,18 +1,17 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
 *.so
-*.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool
-*.out
-
-# Go workspace file
-go.work
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+*.egg
 
 # Build artifacts
 /build/
@@ -31,9 +30,11 @@ Thumbs.db
 
 # Application-specific
 # Config files with credentials
+myfitbit.ini
 config.json
 .env
 *.env
+*.ini
 
 # Downloaded data (users shouldn't commit their personal data)
 /data/
