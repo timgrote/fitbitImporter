@@ -42,14 +42,17 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '1.23'
-        
-    - name: Install Windows dependencies
-      run: |
-        choco install tdm-gcc
-        go mod download
+    
+    - name: Setup TDM-GCC
+      uses: egor-tensin/setup-gcc@v1
+      with:
+        version: latest
+        platform: x64
         
     - name: Build Windows binary
       run: go build -o fitbit-importer-windows-amd64.exe cmd/main.go
+      env:
+        CGO_ENABLED: 1
       
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v3
