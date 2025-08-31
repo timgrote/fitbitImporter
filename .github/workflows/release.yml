@@ -15,12 +15,8 @@ jobs:
         include:
           - os: ubuntu-latest
             name: fitbit-importer-linux-amd64
-            setup_cmd: |
-              sudo apt-get update
-              sudo apt-get install -y libgl1-mesa-dev xorg-dev
           - os: windows-latest
             name: fitbit-importer-windows-amd64.exe
-            setup_cmd: echo "Windows setup complete"
             
     runs-on: ${{ matrix.os }}
     steps:
@@ -31,8 +27,11 @@ jobs:
       with:
         go-version: '1.23'
         
-    - name: Install dependencies
-      run: ${{ matrix.setup_cmd }}
+    - name: Install Linux dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgl1-mesa-dev xorg-dev
         
     - name: Build binary
       run: go build -o ${{ matrix.name }} cmd/main.go
