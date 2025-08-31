@@ -50,8 +50,8 @@ jobs:
         
     - name: Build Windows binary
       run: |
-        $env:CGO_ENABLED = "1"
-        go build -ldflags "-H windowsgui" -o fitbit-importer-windows-amd64.exe cmd/main.go
+        $env:CGO_ENABLED = "0"
+        go build -o fitbit-importer-windows-amd64.exe cmd/main.go
       shell: powershell
       
     - name: Upload Windows artifact
