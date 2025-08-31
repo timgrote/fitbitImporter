@@ -9,24 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            name: fitbit-importer-linux-amd64
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-            name: fitbit-importer-windows-amd64.exe
-          - os: macos-latest
-            goos: darwin
-            goarch: amd64
-            name: fitbit-importer-darwin-amd64
-            
-    runs-on: ${{ matrix.os }}
+  release:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     
@@ -35,30 +19,28 @@ jobs:
       with:
         go-version: '1.23'
         
-    - name: Install Linux dependencies
-      if: matrix.os == 'ubuntu-latest'
+    - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libgl1-mesa-dev xorg-dev
         
-    - name: Build binary
-      run: go build -o ${{ matrix.name }} cmd/main.go
-      
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: ${{ matrix.name }}
-        path: ${{ matrix.name }}
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v3
-      
+    - name: Build Linux binary
+      run: |
+        mkdir -p dist
+        go build -o dist/fitbit-importer-linux-amd64 cmd/main.go
+        
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: '**/*'
+        files: dist/*
         generate_release_notes: true
+        body: |
+          ## Cross-platform binaries
+          - Linux (amd64): fitbit-importer-linux-amd64
+          
+          For Windows and macOS builds, please build from source using:
+          ```bash
+          git clone https://github.com/timgrote/fitbitImporter.git
+          cd fitbitImporter
+          go build cmd/main.go
+          ```
