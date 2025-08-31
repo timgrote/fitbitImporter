@@ -4,133 +4,188 @@ This file contains development commands and project context for Claude Code sess
 
 ## Project Overview
 
-**Goal**: Create a cross-platform Fitbit data export tool that downloads personal health data to CSV files for AI analysis.
+**Goal**: Create a Python-based Fitbit data export tool that downloads personal health data to CSV files for AI analysis.
 
-**Tech Stack**: Go with simple GUI (Fyne or Wails) for cross-platform distribution
+**Tech Stack**: Python with myfitbit library, optional GUI with tkinter or web interface
 
 **Target Users**: Individuals who want to analyze their Fitbit data with AI tools (Claude, ChatGPT, custom solutions)
 
 ## Key Design Decisions
 
+- **Python-based**: Leverage mature ecosystem, avoid compilation issues
+- **Build on existing libraries**: Use myfitbit and python-fitbit as foundation
 - **No analysis features**: Focus purely on data export, let users choose their AI tools
 - **CSV output**: Human-readable format perfect for AI ingestion  
-- **Cross-platform executable**: Single binary distribution, no dependencies
+- **Cross-platform**: Python runs everywhere, optional PyInstaller for executables
 - **Personal API access**: Uses Fitbit's personal app classification for immediate intraday data access
 - **Local storage only**: No cloud services, complete privacy
 
-## Environment Detection
+## Why We Switched from Go to Python
 
-Check environment before running GUI commands:
+See [docs/go-approach-summary.md](docs/go-approach-summary.md) for details. Summary:
+- Go + Fyne GUI had complex CGO cross-compilation issues
+- Python has mature Fitbit libraries already solving our exact problem
+- No compilation needed = simpler distribution and development
+- Better for data processing with pandas integration
+
+## Environment Setup
+
+### Check Python Environment
 ```bash
-# Check if running in Ubuntu/Linux with GUI
-echo $DISPLAY  # Should show :0 or similar if GUI is available
-echo $XDG_SESSION_TYPE  # Shows x11 or wayland for GUI sessions
+# Check Python version (need 3.8+)
+python --version
+python3 --version
 
-# Check desktop environment
-echo $XDG_CURRENT_DESKTOP  # Shows GNOME, KDE, XFCE, etc.
-echo $DESKTOP_SESSION
+# Check pip
+pip --version
+pip3 --version
 
-# Check system info
-lsb_release -a  # Ubuntu version info
-uname -a  # Kernel and system info
+# Check virtual environment
+which python  # Should show venv path when activated
+echo $VIRTUAL_ENV  # Shows current venv path
+
+# System info
+uname -a  # OS info
+lsb_release -a  # Ubuntu/Debian version
 ```
 
 ## Development Commands
 
 ### Initial Setup
 ```bash
-# Initialize Go module
-go mod init github.com/yourusername/fitbitImporter
+# Clone repository
+git clone https://github.com/yourusername/fitbitImporter.git
+cd fitbitImporter
 
-# Install dependencies (when added)
-go mod tidy
+# Create virtual environment
+python -m venv venv
 
-# Build for current platform  
-go build -o fitbit-importer
+# Activate virtual environment
+source venv/bin/activate  # Linux/Mac
+# OR
+venv\Scripts\activate  # Windows
 
-# Build for all platforms
-GOOS=windows GOARCH=amd64 go build -o dist/fitbit-importer-windows.exe
-GOOS=darwin GOARCH=amd64 go build -o dist/fitbit-importer-macos
-GOOS=linux GOARCH=amd64 go build -o dist/fitbit-importer-linux
+# Install dependencies
+pip install -r requirements.txt
+
+# Install development dependencies
+pip install -r requirements-dev.txt
 ```
 
-### GUI Development (Ubuntu/Linux)
+### Using myfitbit (Core Library)
 ```bash
-# Install Fyne dependencies for Ubuntu GUI development
-sudo apt-get update
-sudo apt-get install -y golang gcc libgl1-mesa-dev xorg-dev
+# Install myfitbit
+pip install myfitbit
 
-# Run GUI application in development
-go run cmd/main.go
+# Create config file (myfitbit.ini)
+cat > myfitbit.ini << EOF
+[fitbit]
+client_id = YOUR_CLIENT_ID
+client_secret = YOUR_CLIENT_SECRET
+EOF
 
-# Test GUI rendering (Fyne specific)
-go run -tags debug cmd/main.go  # Enables debug mode
+# Export data
+python -m myfitbit
 
-# Open browser for OAuth callback testing
-xdg-open http://localhost:8080/callback
+# Generate HTML report
+python -m myfitbit.report
 
-# Monitor system resources during GUI app
-htop  # Terminal-based system monitor
-gnome-system-monitor  # GUI system monitor (if GNOME)
+# With debug output
+python -m myfitbit --debug
 ```
 
 ### Testing
 ```bash
-# Run tests
-go test ./...
+# Run all tests
+pytest
 
-# Run with race detection
-go test -race ./...
+# Run with coverage
+pytest --cov=fitbit_importer
 
-# Test with coverage
-go test -cover ./...
+# Run specific test file
+pytest tests/test_export.py
+
+# Run with verbose output
+pytest -v
+
+# Run with debug output
+pytest -s
 ```
 
 ### Code Quality
 ```bash
-# Format code
-go fmt ./...
+# Format code with black
+black .
 
-# Lint code (requires golangci-lint)
-golangci-lint run
+# Sort imports
+isort .
 
-# Vet code
-go vet ./...
+# Lint with flake8
+flake8 .
+
+# Type checking with mypy
+mypy .
+
+# All quality checks
+black . && isort . && flake8 . && mypy .
 ```
 
-## Project Structure (Planned)
+### Building Executables
+```bash
+# Install PyInstaller
+pip install pyinstaller
+
+# Build single-file executable
+pyinstaller --onefile --name fitbit-importer main.py
+
+# Build with custom icon (Windows)
+pyinstaller --onefile --icon=icon.ico --name fitbit-importer main.py
+
+# Build for different platforms (must run on target OS)
+# Linux
+pyinstaller --onefile --name fitbit-importer-linux main.py
+
+# Windows (run on Windows)
+pyinstaller --onefile --name fitbit-importer.exe main.py
+
+# macOS (run on macOS)
+pyinstaller --onefile --name fitbit-importer-macos main.py
+```
+
+## Project Structure
 
 ```
 fitbitImporter/
-├── cmd/
-│   └── main.go              # Entry point
-├── internal/
-│   ├── api/
-│   │   ├── client.go        # Fitbit API client
-│   │   ├── auth.go          # OAuth2 authentication
-│   │   └── endpoints.go     # API endpoint definitions
-│   ├── data/
-│   │   ├── exporter.go      # CSV export logic
-│   │   ├── models.go        # Data structures
-│   │   └── storage.go       # File system operations
-│   ├── gui/
-│   │   ├── app.go           # GUI application
-│   │   └── components.go    # UI components
-│   └── config/
-│       └── config.go        # Configuration management
+├── fitbit_importer/
+│   ├── __init__.py          # Package initialization
+│   ├── main.py              # Entry point
+│   ├── export.py            # Enhanced export functionality
+│   ├── config.py            # Configuration management
+│   ├── gui.py               # Optional GUI (tkinter)
+│   └── utils.py             # Utility functions
+├── tests/
+│   ├── __init__.py
+│   ├── test_export.py
+│   ├── test_config.py
+│   └── fixtures/            # Test data
 ├── docs/
-│   └── setup.md             # Setup instructions
+│   ├── setup.md             # Setup instructions
+│   └── go-approach-summary.md # Why we switched from Go
+├── requirements.txt         # Production dependencies
+├── requirements-dev.txt     # Development dependencies
+├── setup.py                 # Package setup
 ├── README.md
 ├── CLAUDE.md               # This file
 ├── .gitignore
-├── go.mod
-└── go.sum
+├── myfitbit.ini            # Fitbit API credentials (git-ignored)
+└── .env                    # Environment variables (git-ignored)
 ```
 
 ## Fitbit API Context
 
 **Authentication**: OAuth2 with Personal App classification
 **Rate Limits**: 150 requests/hour per user
+**Redirect URL**: `http://localhost:8189/auth_code` (myfitbit default)
 **Key Endpoints**:
 - Heart Rate Intraday: `/1/user/-/activities/heart/date/[date]/1d/1min.json`
 - Sleep: `/1.2/user/-/sleep/date/[date].json`
@@ -138,44 +193,49 @@ fitbitImporter/
 
 **Data Granularity**: Most metrics available at 1-minute intervals
 
-## Next Development Steps
+## Python Dependencies
 
-1. Initialize Go module and basic project structure
-2. Implement Fitbit OAuth2 authentication flow
-3. Create API client with rate limiting
-4. Build CSV export functionality
-5. Design simple GUI for configuration
-6. Add incremental sync capabilities
-7. Cross-platform build pipeline
+### Core Dependencies (requirements.txt)
+```txt
+myfitbit>=1.0.0          # Core Fitbit export library
+python-fitbit>=0.3.0     # Fitbit API client
+pandas>=1.3.0            # Data processing
+requests-oauthlib>=1.3.0 # OAuth2 support
+python-dateutil>=2.8.0   # Date handling
+click>=8.0.0             # CLI framework
+python-dotenv>=0.19.0    # Environment variables
+```
 
-## Dependencies (to be added)
+### Development Dependencies (requirements-dev.txt)
+```txt
+pytest>=7.0.0            # Testing framework
+pytest-cov>=3.0.0        # Coverage reporting
+black>=22.0.0            # Code formatter
+isort>=5.10.0            # Import sorting
+flake8>=4.0.0            # Linting
+mypy>=0.950              # Type checking
+pyinstaller>=5.0.0       # Executable building
+```
 
-```go
-// Core dependencies
-"golang.org/x/oauth2"           // OAuth2 authentication
-"github.com/spf13/cobra"        // CLI framework (if CLI mode)
-"github.com/spf13/viper"        // Configuration management
-
-// GUI framework (choose one)
-"fyne.io/fyne/v2"              // Native-looking GUI
-// OR
-"github.com/wailsapp/wails/v2" // Web-based GUI
-
-// Utilities
-"github.com/go-resty/resty/v2"  // HTTP client
-"encoding/csv"                  // Built-in CSV support
-"time"                         // Built-in time handling
+### Optional GUI Dependencies
+```txt
+tkinter                  # Built-in with Python
+# OR
+flask>=2.0.0             # Web-based GUI
 ```
 
 ## Configuration Format
 
+### myfitbit.ini (Required)
+```ini
+[fitbit]
+client_id = YOUR_CLIENT_ID
+client_secret = YOUR_CLIENT_SECRET
+```
+
+### config.json (Optional, for our enhancements)
 ```json
 {
-  "fitbit": {
-    "client_id": "FITBIT_CLIENT_ID",
-    "client_secret": "FITBIT_CLIENT_SECRET",
-    "redirect_uri": "http://localhost:8080/callback"
-  },
   "storage": {
     "data_directory": "./data",
     "export_directory": "./exports"
@@ -183,22 +243,73 @@ fitbitImporter/
   "sync": {
     "data_types": ["heart_rate", "sleep", "activity", "steps"],
     "start_date": "2024-01-01",
-    "auto_sync": false
+    "end_date": null,
+    "auto_resume": true
+  },
+  "export": {
+    "format": "csv",
+    "include_raw": false,
+    "compress": false
   }
 }
 ```
 
-## Build & Release Process
+## Development Workflow
 
-1. **Development**: `go run cmd/main.go`
-2. **Testing**: Full test suite with mock API responses
-3. **Building**: Cross-platform binaries for releases
-4. **Distribution**: GitHub releases with pre-built executables
+1. **Setup**: Create venv, install dependencies
+2. **Test myfitbit**: Verify basic export works
+3. **Enhance**: Add our custom features on top
+4. **Test**: Run pytest suite
+5. **Build**: Create executable with PyInstaller
+6. **Release**: Upload to GitHub releases
+
+## Handling Rate Limits
+
+myfitbit handles this automatically, but for reference:
+- Fitbit allows 150 requests/hour
+- 1 day of heart rate = 1 request
+- Large exports may take hours
+- Tool automatically resumes if interrupted
+- HTTP 429 errors are normal and handled
+
+## GitHub Actions for Python
+
+```yaml
+name: Python CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, '3.10', 3.11]
+    
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    - name: Run tests
+      run: pytest
+    - name: Check code quality
+      run: |
+        black --check .
+        flake8 .
+```
 
 ## Notes for Future Sessions
 
-- Focus on simplicity and reliability over features
-- Ensure robust error handling for API failures
-- Make the tool resumable for large historical imports
-- Keep GUI minimal - just credentials, paths, and sync button
-- Consider adding progress indicators for long-running operations
+- Start by testing myfitbit as-is to understand its capabilities
+- Focus on enhancements that myfitbit doesn't provide
+- Consider adding Google Takeout import as a faster alternative
+- Keep the tool simple - resist feature creep
+- Document any Fitbit API quirks discovered
+- Consider rate limit warnings for large date ranges
+- Test with different Fitbit device types (some don't have all metrics)
