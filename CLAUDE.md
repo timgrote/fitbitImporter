@@ -18,6 +18,23 @@ This file contains development commands and project context for Claude Code sess
 - **Personal API access**: Uses Fitbit's personal app classification for immediate intraday data access
 - **Local storage only**: No cloud services, complete privacy
 
+## Environment Detection
+
+Check environment before running GUI commands:
+```bash
+# Check if running in Ubuntu/Linux with GUI
+echo $DISPLAY  # Should show :0 or similar if GUI is available
+echo $XDG_SESSION_TYPE  # Shows x11 or wayland for GUI sessions
+
+# Check desktop environment
+echo $XDG_CURRENT_DESKTOP  # Shows GNOME, KDE, XFCE, etc.
+echo $DESKTOP_SESSION
+
+# Check system info
+lsb_release -a  # Ubuntu version info
+uname -a  # Kernel and system info
+```
+
 ## Development Commands
 
 ### Initial Setup
@@ -35,6 +52,26 @@ go build -o fitbit-importer
 GOOS=windows GOARCH=amd64 go build -o dist/fitbit-importer-windows.exe
 GOOS=darwin GOARCH=amd64 go build -o dist/fitbit-importer-macos
 GOOS=linux GOARCH=amd64 go build -o dist/fitbit-importer-linux
+```
+
+### GUI Development (Ubuntu/Linux)
+```bash
+# Install Fyne dependencies for Ubuntu GUI development
+sudo apt-get update
+sudo apt-get install -y golang gcc libgl1-mesa-dev xorg-dev
+
+# Run GUI application in development
+go run cmd/main.go
+
+# Test GUI rendering (Fyne specific)
+go run -tags debug cmd/main.go  # Enables debug mode
+
+# Open browser for OAuth callback testing
+xdg-open http://localhost:8080/callback
+
+# Monitor system resources during GUI app
+htop  # Terminal-based system monitor
+gnome-system-monitor  # GUI system monitor (if GNOME)
 ```
 
 ### Testing

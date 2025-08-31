@@ -25,13 +25,51 @@ Fitbit Data Importer allows you to download all your personal health data from F
 - **HRV**: Heart rate variability data
 - **SpO2**: Blood oxygen saturation during sleep
 
-## Quick Start
+## Getting Started
+
+### Two Methods to Export Your Fitbit Data
+
+#### Method 1: Google Takeout (Recommended - Fast!)
+
+**Best for**: Historical data, bulk exports of years of data
+
+1. **Export from Google**:
+   - Open the Fitbit app → Profile → "Your Fitbit data"
+   - OR go directly to [takeout.google.com](https://takeout.google.com)
+   - Select Fitbit data and request export
+   - Wait 2-5 hours for Google to prepare your data
+   - Download the ZIP file when ready
+
+2. **Import to this app**:
+   - Run the Fitbit Importer app
+   - Choose your export directory
+   - Click "Import Google Takeout"
+   - Select the downloaded ZIP file
+   - Wait a few minutes for processing (vs hours with API!)
+
+#### Method 2: Fitbit API Sync (Real-time but Slow)
+
+**Best for**: Daily/weekly syncs, staying up-to-date with recent data
+
+1. **Get Fitbit API Credentials**:
+   - Go to [dev.fitbit.com](https://dev.fitbit.com)
+   - Sign in and click "Manage" → "Register An App"
+   - **Application Name**: Choose any name (e.g., "My Fitbit Exporter")  
+   - **OAuth 2.0 Application Type**: Select **"Personal"** (Important!)
+   - **Redirect URL**: Enter exactly: `http://localhost:8080/callback`
+   - Save your **Client ID** and **Client Secret**
+
+2. **Sync via API**:
+   - Run the app and enter your credentials
+   - Click "Authorize with Fitbit" (opens browser)
+   - Select date range and data types
+   - Click "Sync via API" (may take hours for large date ranges)
+
+### Quick Start
 
 1. **Download**: Get the latest release for your platform from [Releases](../../releases)
 2. **Run**: Double-click the executable (no installation required)
-3. **Authenticate**: Log in with your Fitbit account when prompted
-4. **Configure**: Choose where to save your exported data
-5. **Sync**: Click "Start Export" to begin downloading your data
+3. **Choose method**: Google Takeout (fast) or API sync (slow but real-time)
 
 ## Data Output
 
@@ -82,17 +120,28 @@ go mod tidy
 go build -o fitbit-importer
 ```
 
-### Configuration
+### Troubleshooting
 
-Create a `config.json` file with your Fitbit API credentials:
+**Common Issues:**
 
-```json
-{
-  "client_id": "your_fitbit_client_id",
-  "client_secret": "your_fitbit_client_secret",
-  "data_directory": "./data",
-  "export_directory": "./exports"
-}
+- **"Invalid redirect_uri" error**: Make sure the Redirect URL in your Fitbit app settings is exactly `http://localhost:8080/callback`
+- **"Unauthorized" error**: Your app must be set to "Personal" type for intraday data access
+- **Rate limit exceeded**: The app handles this automatically, but large date ranges may take time
+- **No data appearing**: Some data types require specific Fitbit devices (e.g., SpO2 requires newer devices)
+
+### Building from Source
+
+If you want to build from source instead of using pre-built binaries:
+
+```bash
+# Install dependencies (Ubuntu/Debian)
+sudo ./install-dependencies.sh
+
+# Build the application
+go build -o fitbit-importer cmd/main.go
+
+# Run
+./fitbit-importer
 ```
 
 ## Contributing
