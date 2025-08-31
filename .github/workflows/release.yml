@@ -45,7 +45,8 @@ jobs:
         
     - name: Install Windows dependencies
       run: |
-        go install fyne.io/fyne/v2/cmd/fyne@latest
+        choco install tdm-gcc
+        go mod download
         
     - name: Build Windows binary
       run: go build -o fitbit-importer-windows-amd64.exe cmd/main.go
