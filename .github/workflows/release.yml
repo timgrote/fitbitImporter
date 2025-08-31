@@ -43,6 +43,10 @@ jobs:
       with:
         go-version: '1.23'
         
+    - name: Install Windows dependencies
+      run: |
+        go install fyne.io/fyne/v2/cmd/fyne@latest
+        
     - name: Build Windows binary
       run: go build -o fitbit-importer-windows-amd64.exe cmd/main.go
       
