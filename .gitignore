@@ -35,6 +35,20 @@ config.json
 .env
 *.env
 *.ini
+fitbit-api-secrets.txt
+*secrets*
+.fitbit_token.json
+
+# Personal health data folders - NEVER commit personal data
+data/
+takeout_data/
+fitbit_download/
+fitbit_downloads/
+existing_data/
+
+# Data analysis outputs
+data_gaps.csv
+*.csv
 
 # Downloaded data (users shouldn't commit their personal data)
 /data/

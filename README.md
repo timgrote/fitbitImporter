@@ -1,221 +1,319 @@
 # Fitbit Data Importer
 
-A Python-based tool to export your personal Fitbit data to local CSV files for AI analysis and personal use.
+A comprehensive Python tool to extract, process, and merge your personal Fitbit data from multiple sources into AI-ready CSV files.
 
-## Overview
+## 🎯 Overview
 
-Fitbit Data Importer allows you to download all your personal health data from Fitbit and save it in CSV format on your local machine. Built on the proven `myfitbit` library, this tool provides a simple way to export your data for analysis by AI tools like Claude, ChatGPT, or custom analytics solutions.
+Fitbit Data Importer combines the best of both worlds:
+- **Google Takeout archives** for complete historical data (years of data, instantly)
+- **Fitbit API downloads** for recent data and filling gaps
+- **Smart merging** to create a unified, comprehensive dataset
 
-### Key Features
+### ✨ Key Features
 
-- **Personal Data Access**: Uses Fitbit's Personal API for immediate access to your intraday data
-- **Comprehensive Data Export**: Heart rate, sleep, activity, steps, HRV, SpO2, and more
-- **Python-Based**: Easy to install and modify, no compilation required
-- **AI-Ready Format**: Clean CSV output optimized for AI analysis
-- **Rate Limit Handling**: Automatically manages Fitbit's 150 requests/hour limit
-- **Incremental Sync**: Only downloads new data on subsequent runs
-- **Proven Foundation**: Built on the mature `myfitbit` and `python-fitbit` libraries
+- **📦 Google Takeout Support**: Process your downloaded Fitbit archives instantly
+- **🔄 API Integration**: Fill gaps and get recent data via Fitbit API
+- **🧠 Smart Merging**: Intelligently combines both data sources
+- **📊 Comprehensive Data**: Heart rate, sleep, activity, calories, HRV, SpO2, temperature
+- **🤖 AI-Ready**: Clean CSV format perfect for analysis with Claude, ChatGPT, etc.
+- **⚡ High Performance**: Process years of data in minutes
+- **🔒 Privacy First**: All data stays on your machine
 
-## Why Python?
+## 📋 Supported Data Types
 
-After initially attempting a Go implementation (see [docs/go-approach-summary.md](docs/go-approach-summary.md)), we switched to Python for several reasons:
-- **No compilation issues**: Pure Python, works everywhere Python runs
-- **Mature ecosystem**: Leverage existing Fitbit libraries with years of development
-- **Better for data processing**: Native pandas support, easy CSV handling
-- **Faster development**: Build on proven solutions instead of starting from scratch
+| Data Type | Google Takeout | Fitbit API | Granularity |
+|-----------|----------------|------------|-------------|
+| ❤️ **Heart Rate** | ✅ | ✅ | Every 5-15 seconds |
+| 😴 **Sleep** | ✅ | ✅ | Nightly + stages |
+| 🔥 **Calories** | ✅ | ✅ | Every minute |
+| 👣 **Steps** | ✅ | ✅ | Every 15 minutes |
+| 📏 **Distance** | ✅ | ✅ | Every 15 minutes |
+| 🫁 **SpO2** | ✅ | ✅ | Nightly |
+| 🌡️ **Temperature** | ✅ | ❌ | Every minute |
+| ❤️‍🩹 **HRV** | ✅ | ❌ | Daily summary |
+| 📈 **Activity Summary** | ❌ | ✅ | Daily totals |
 
-## Data Types Supported
+## 🚀 Quick Start
 
-- **Heart Rate**: Intraday data with 1-minute granularity
-- **Sleep**: Sleep stages, duration, efficiency, and restlessness
-- **Activity**: Steps, distance, calories, active minutes, floors
-- **Body Metrics**: Weight, BMI, body fat percentage
-- **HRV**: Heart rate variability data
-- **SpO2**: Blood oxygen saturation during sleep
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8 or later
-- Fitbit Developer Account (for API credentials)
-
-### Installation
-
-#### Option 1: Install via pip (Recommended)
-
-```bash
-pip install myfitbit
-```
-
-#### Option 2: Install from source
+### 1. Installation
 
 ```bash
 git clone https://github.com/yourusername/fitbitImporter.git
 cd fitbitImporter
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Setup Fitbit API Credentials
+### 2. Get Your Google Takeout Data (Recommended)
 
-1. **Get Fitbit API Credentials**:
+This gives you years of data instantly:
+
+1. **Request Your Data**:
+   - Go to [Google Takeout](https://takeout.google.com)
+   - Select **Fitbit** (deselect everything else)
+   - Choose ZIP format, click "Create export"
+   - Download the ZIP file(s) when ready
+
+2. **Place Your Data**:
+   ```bash
+   mkdir takeout_data
+   # Drop your downloaded ZIP files into takeout_data/
+   mv ~/Downloads/takeout-*.zip takeout_data/
+   ```
+
+3. **Process Your Data**:
+   ```bash
+   python main.py process-takeout
+   ```
+
+### 3. Set Up Fitbit API (For Recent Data & Gaps)
+
+1. **Get API Credentials**:
    - Go to [dev.fitbit.com](https://dev.fitbit.com)
-   - Sign in and click "Manage" → "Register An App"
-   - **Application Name**: Choose any name (e.g., "My Fitbit Exporter")  
-   - **OAuth 2.0 Application Type**: Select **"Personal"** (Important!)
-   - **Redirect URL**: Enter exactly: `http://localhost:8189/auth_code`
-   - Save your **Client ID** and **Client Secret**
+   - Register a new app, choose **"Personal"** type
+   - Set Redirect URL: `http://localhost:8080/callback`
+   - Save your Client ID and Client Secret
 
-2. **Configure the Tool**:
-   Create a `myfitbit.ini` file:
+2. **Configure Credentials**:
+   ```bash
+   cp myfitbit.ini.template myfitbit.ini
+   # Edit myfitbit.ini with your credentials
+   ```
+
    ```ini
    [fitbit]
    client_id = YOUR_CLIENT_ID
    client_secret = YOUR_CLIENT_SECRET
+   
+   [export]
+   start_date = 2024-08-29
+   end_date = 2024-08-31
    ```
 
-### Usage
+3. **Download Recent Data**:
+   ```bash
+   python main.py export
+   ```
 
-#### Export Your Data
+4. **Merge Everything**:
+   ```bash
+   python main.py merge
+   ```
+
+## 📊 Command Reference
+
+### Core Commands
 
 ```bash
-# Export all available data
-python -m myfitbit
+# Process Google Takeout ZIP files
+python main.py process-takeout --takeout-folder takeout_data
 
-# Generate HTML report
-python -m myfitbit.report
+# Download data via Fitbit API for specific date range
+python main.py export --config myfitbit.ini
 
-# Or use our enhanced wrapper (coming soon)
-python fitbit_export.py --start-date 2024-01-01 --end-date 2024-12-31
+# Analyze your data and identify gaps
+python main.py analyze
+
+# Merge API downloads with Takeout data
+python main.py merge
+
+# See all options
+python main.py --help
 ```
 
-The tool will:
-1. Open your browser for Fitbit authorization
-2. Download your data respecting rate limits
-3. Save data as CSV files organized by date
-4. Resume from where it left off if interrupted
+### Advanced Usage
 
-## Data Output
+```bash
+# Analyze specific folder
+python main.py analyze --data-folder my_data --export-gaps
 
-Data is organized in CSV files by date and type:
+# Dry run merge (see what would happen)
+python main.py merge --dry-run
+
+# Process Takeout data to custom folder
+python main.py process-takeout --output-folder processed_data
+```
+
+## 📁 Data Organization
+
+After processing, your data will be organized like this:
 
 ```
 data/
-├── 2025/
-│   ├── 01/
-│   │   ├── heart_rate.csv
-│   │   ├── sleep.csv
-│   │   ├── activity.csv
-│   │   └── steps.csv
-│   └── 02/
-│       └── ...
-└── exports/
-    └── summary_2025-01.csv
+├── heart_rate/
+│   ├── 2023-11-22.csv    # High-freq HR readings
+│   ├── 2023-11-23.csv
+│   └── ...
+├── sleep/
+│   ├── 2023-11-23.csv    # Sleep stages, efficiency
+│   └── ...
+├── calories/
+│   ├── 2023-11-21.csv    # Minute-by-minute burn
+│   └── ...
+├── steps/
+├── distance/
+├── spo2/
+├── temperature/
+├── hrv/
+├── sleep_score/
+└── activity_summary/     # From API only
+    ├── 2024-08-29.csv
+    └── ...
 ```
 
-## Using Your Data with AI
+## 🤖 Using Your Data with AI
 
-The CSV format is perfect for AI analysis. Example queries:
+Your CSV data is perfect for AI analysis:
 
-- "Analyze my sleep patterns over the last month"
-- "Show correlations between my heart rate and activity levels"
-- "Identify trends in my step count and suggest improvements"
+### Example Queries for Claude/ChatGPT:
 
-## Privacy & Security
+- *"I'm uploading my heart rate data. Analyze patterns and identify when I'm most stressed."*
+- *"Based on my sleep data, what factors correlate with my best sleep quality?"*
+- *"Compare my activity levels before and after [date]. What changed?"*
+- *"Find anomalies in my health data that might indicate illness."*
 
-- **Local Storage**: All data stays on your machine
-- **No Cloud**: We don't store or access your data
-- **Open Source**: Full transparency in how your data is handled
-- **Secure Authentication**: Uses OAuth2 with Fitbit's official API
+### Sample Data Structure:
 
-## Development
+**Heart Rate** (`heart_rate/2024-08-29.csv`):
+```csv
+datetime,heart_rate,confidence
+2024-08-29 06:00:02,80,3
+2024-08-29 06:00:17,81,3
+```
 
-### Setting Up Development Environment
+**Sleep** (`sleep/2024-08-29.csv`):
+```csv
+date,startTime,endTime,minutesAsleep,efficiency,deep_minutes,light_minutes,rem_minutes
+2024-08-29,2024-08-28T23:33:30.000,2024-08-29T08:14:00.000,451,95,56,258,137
+```
+
+## 🔍 Data Analysis
+
+### Built-in Analysis
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/fitbitImporter.git
-cd fitbitImporter
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-pytest
-
-# Run with debug logging
-python -m myfitbit --debug
+# Get comprehensive data report
+python main.py analyze
 ```
 
-### Building Standalone Executable
+**Sample output:**
+```
+FITBIT DATA ANALYSIS REPORT
+============================
+📅 Overall Date Range: 2023-11-21 to 2025-08-31
+📊 Total Days Span: 650 days
 
-To create a standalone executable that doesn't require Python:
+✅ HEART_RATE: 573 days
+✅ SLEEP: 507 days  
+✅ CALORIES: 649 days
+⚠️  Gaps found: 2024-06-08 to 2024-06-10 (3 days)
+
+💡 Recommended API downloads: [specific date ranges]
+```
+
+### Export Gap Analysis
 
 ```bash
-# Install PyInstaller
-pip install pyinstaller
-
-# Build executable
-pyinstaller --onefile --name fitbit-importer main.py
-
-# Find your executable in dist/
+python main.py analyze --export-gaps
+# Creates data_gaps.csv for detailed gap analysis
 ```
 
-## Troubleshooting
+## ⚙️ Configuration
 
-**Common Issues:**
+### File Locations
 
-- **"Invalid redirect_uri" error**: Make sure the Redirect URL in your Fitbit app settings is exactly `http://localhost:8189/auth_code`
-- **"Unauthorized" error**: Your app must be set to "Personal" type for intraday data access
-- **Rate limit exceeded (HTTP 429)**: This is normal for large exports. The tool will automatically resume after an hour
-- **No data appearing**: Some data types require specific Fitbit devices (e.g., SpO2 requires newer devices)
-- **ModuleNotFoundError**: Make sure you've activated your virtual environment and installed requirements
+The tool looks for configuration in these locations:
+1. `myfitbit.ini` (API credentials & date ranges)  
+2. Command line options override config file
+3. Default folders: `takeout_data/`, `data/`, `fitbit_download/`
 
-## Libraries We Build On
+### Sample Configuration
 
-This project leverages these excellent Python libraries:
-- **[myfitbit](https://github.com/Knio/myfitbit)**: Core export functionality and rate limit handling
-- **[python-fitbit](https://github.com/orcasgit/python-fitbit)**: Fitbit API client implementation
-- **pandas**: Data processing and CSV handling
-- **requests-oauthlib**: OAuth2 authentication
+```ini
+[fitbit]
+client_id = YOUR_CLIENT_ID
+client_secret = YOUR_CLIENT_SECRET
 
-## Contributing
+[export]
+# Download specific date ranges
+start_date = 2024-08-29
+end_date = 2024-08-31
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+[paths]
+takeout_folder = takeout_data
+output_folder = data
+api_downloads = fitbit_download
+```
 
-## Future Enhancements
+## 🔧 Troubleshooting
 
-- [ ] GUI wrapper for easier configuration
-- [ ] Google Takeout import support
-- [ ] Custom date range selection UI
-- [ ] Progress bars for long exports
-- [ ] Data visualization dashboard
-- [ ] Automated daily backups
+### Common Issues
 
-## License
+**Google Takeout Processing:**
+- **Empty ZIP files**: Some Takeout exports may not contain Fitbit data
+- **Processing errors**: Check that ZIP files are fully downloaded
+- **Missing data types**: Not all Fitbit devices record all metrics
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+**Fitbit API:**
+- **"Invalid redirect_uri"**: Must match exactly in your app settings
+- **"Unauthorized"**: App must be set to "Personal" type
+- **Rate limits (HTTP 429)**: Normal for large exports, tool auto-resumes
 
-## Disclaimer
+**Data Quality:**
+- **Missing heart rate**: Some recent files use different format (handled automatically)
+- **Gaps in data**: Use `analyze` command to identify and fill gaps
+- **Duplicate data**: Merger automatically prevents duplicates
 
-This tool is not affiliated with Fitbit Inc. or Google. Use at your own risk. Always keep backups of important data.
+### Debug Mode
 
-## Support
+```bash
+python main.py export --debug
+# Shows detailed API communication and processing steps
+```
 
-- **Issues**: Report bugs and request features via [GitHub Issues](../../issues)
-- **Documentation**: See [docs/](docs/) for detailed guides
-- **API Rate Limits**: The tool automatically handles Fitbit's rate limits (150 req/hour)
+## 🏗️ Architecture
+
+### Data Pipeline
+
+1. **Google Takeout** → Extract & Convert → Standardized CSV
+2. **Fitbit API** → Download → Standardized CSV  
+3. **Smart Merger** → Combine sources → Unified Dataset
+
+### Key Components
+
+- **`takeout_processor.py`**: Extracts data from Takeout ZIP files
+- **`export.py`**: Downloads data via Fitbit API with date ranges
+- **`data_merger.py`**: Intelligently combines both sources
+- **`data_analyzer.py`**: Analyzes coverage and identifies gaps
+
+## 🤝 Contributing
+
+We welcome contributions! Areas where help is needed:
+
+- **Data Sources**: Support for other fitness tracker exports
+- **Visualizations**: Built-in data visualization tools
+- **Analysis**: Pre-built health insight algorithms
+- **UI/UX**: Web or desktop interface
+- **Testing**: More comprehensive test coverage
+
+## 📄 License
+
+MIT License - Your data, your rules.
+
+## ⚠️ Privacy & Security
+
+- **Local Processing**: All data stays on your machine
+- **No Cloud**: We don't store, access, or transmit your data
+- **Open Source**: Full transparency in data handling
+- **Secure**: Uses official OAuth2 authentication
+
+## 🆘 Support
+
+- **Issues**: [GitHub Issues](../../issues)
+- **Documentation**: See `docs/` folder
+- **API Limits**: Automatically handled (150 requests/hour)
 
 ---
 
-*Your data belongs to you. Take control of it.*
+*Take control of your health data. Export it, analyze it, own it.* 💪

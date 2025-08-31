@@ -1,0 +1,16 @@
+[fitbit]
+client_id = YOUR_CLIENT_ID
+client_secret = YOUR_CLIENT_SECRET
+
+[export]
+# Uncomment and modify these dates to use custom date range export
+# Format: YYYY-MM-DD
+# If not specified, defaults to yesterday and today
+# start_date = 2024-08-29
+# end_date = 2024-08-31
+
+[paths]
+# Override default folder locations if needed
+# takeout_folder = takeout_data
+# output_folder = data  
+# api_downloads = fitbit_download
