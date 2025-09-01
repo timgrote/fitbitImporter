@@ -226,7 +226,7 @@ def aggregate_data_by_time(df: pd.DataFrame, aggregation: str, value_column: str
         df['week'] = df['date'].dt.to_period('W-MON')
         result = df.groupby('week')[value_column].sum().reset_index()
         result['date'] = result['week'].dt.start_time
-        result['period'] = result['week'].astype(str)
+        result['period'] = result['date'].dt.strftime('%Y-%m-%d')
         
     elif aggregation == "Monthly":
         # Group by month
@@ -266,7 +266,7 @@ def aggregate_heart_rate_by_time(df: pd.DataFrame, aggregation: str) -> pd.DataF
             ('resting_hr', lambda x: x.quantile(0.1))
         ]).reset_index()
         result['date'] = result['week'].dt.start_time
-        result['period'] = result['week'].astype(str)
+        result['period'] = result['date'].dt.strftime('%Y-%m-%d')
         
     elif aggregation == "Monthly":
         # Group by month and average
@@ -291,3 +291,34 @@ def format_number(value: float, decimals: int = 0) -> str:
         return f"{int(value):,}"
     else:
         return f"{value:,.{decimals}f}"
+
+def detect_naps(sleep_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Detect naps vs main sleep sessions based on start time and duration.
+    Adds 'sleep_type' column with values 'Main Sleep' or 'Nap'.
+    """
+    if sleep_df.empty or 'startTime' not in sleep_df.columns:
+        sleep_df['sleep_type'] = 'Main Sleep'
+        return sleep_df
+    
+    sleep_df = sleep_df.copy()
+    sleep_df['startTime'] = pd.to_datetime(sleep_df['startTime'])
+    sleep_df['start_hour'] = sleep_df['startTime'].dt.hour
+    
+    # Nap detection logic:
+    # 1. Started between 6 AM and 10 PM (daytime)
+    # 2. OR duration < 3 hours (short sleep regardless of time)
+    duration_minutes = sleep_df.get('minutesAsleep', 0)
+    
+    sleep_df['sleep_type'] = 'Main Sleep'  # Default
+    
+    # Mark as nap if:
+    # - Started between 6 AM (6) and 10 PM (22) AND duration < 4 hours (more conservative)
+    # This prevents main nighttime sleep from being classified as naps
+    nap_conditions = (
+        (sleep_df['start_hour'] >= 6) & (sleep_df['start_hour'] <= 22) & (duration_minutes < 240)
+    )
+    
+    sleep_df.loc[nap_conditions, 'sleep_type'] = 'Nap'
+    
+    return sleep_df

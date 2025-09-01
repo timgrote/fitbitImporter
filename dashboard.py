@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta, date
 import numpy as np
+import subprocess
+import os
 
 from dashboard_utils import (
     find_latest_data_date,
@@ -19,7 +21,8 @@ from dashboard_utils import (
     calculate_default_date_range,
     aggregate_data_by_time,
     aggregate_heart_rate_by_time,
-    format_number
+    format_number,
+    detect_naps
 )
 
 # Page configuration
@@ -55,57 +58,138 @@ default_start, default_end = calculate_default_date_range()
 st.sidebar.write(f"**Available data:** {min_date} to {max_date}")
 st.sidebar.write(f"**Total days:** {(max_date - min_date).days + 1}")
 
+# Initialize session state for date range
+if 'date_range_start' not in st.session_state:
+    st.session_state.date_range_start = default_start
+if 'date_range_end' not in st.session_state:
+    st.session_state.date_range_end = default_end
+if 'active_quick_button' not in st.session_state:
+    st.session_state.active_quick_button = "7d"  # Default to "Last 7 days" since that's our initial range
+
 # Date range picker
 date_range = st.sidebar.date_input(
     "Select date range",
-    value=(default_start, default_end),
+    value=(st.session_state.date_range_start, st.session_state.date_range_end),
     min_value=min_date,
-    max_value=max_date
+    max_value=max_date,
+    key="date_range_picker"
 )
 
 # Handle date range selection
 if isinstance(date_range, tuple) and len(date_range) == 2:
-    start_date, end_date = date_range
+    # Check if user manually changed the date range
+    if date_range != (st.session_state.date_range_start, st.session_state.date_range_end):
+        st.session_state.active_quick_button = None  # Clear active button if manual change
+    st.session_state.date_range_start, st.session_state.date_range_end = date_range
 else:
     # Single date selected, use as both start and end
-    start_date = end_date = date_range if isinstance(date_range, date) else default_start
+    if isinstance(date_range, date):
+        st.session_state.date_range_start = st.session_state.date_range_end = date_range
+        st.session_state.active_quick_button = None  # Clear active button
+
+start_date = st.session_state.date_range_start
+end_date = st.session_state.date_range_end
 
 # Quick date range buttons
 st.sidebar.write("**Quick selections:**")
 col1, col2 = st.sidebar.columns(2)
 
 with col1:
-    if st.button("Last 7 days"):
-        start_date, end_date = calculate_default_date_range()
+    # Use emoji/styling to show active state instead of red primary button
+    btn_text_7d = "✅ Last 7 days" if st.session_state.active_quick_button == "7d" else "Last 7 days"
+    if st.button(btn_text_7d, key="btn_7d"):
+        st.session_state.date_range_start, st.session_state.date_range_end = calculate_default_date_range()
+        st.session_state.active_quick_button = "7d"
         st.rerun()
     
-    if st.button("Last 30 days"):
+    btn_text_30d = "✅ Last 30 days" if st.session_state.active_quick_button == "30d" else "Last 30 days"
+    if st.button(btn_text_30d, key="btn_30d"):
         latest = find_latest_data_date()
         if latest:
-            start_date = latest - timedelta(days=29)
-            end_date = latest
+            st.session_state.date_range_start = latest - timedelta(days=29)
+            st.session_state.date_range_end = latest
+            st.session_state.active_quick_button = "30d"
             st.rerun()
 
 with col2:
-    if st.button("Last 90 days"):
+    btn_text_90d = "✅ Last 90 days" if st.session_state.active_quick_button == "90d" else "Last 90 days"
+    if st.button(btn_text_90d, key="btn_90d"):
         latest = find_latest_data_date()
         if latest:
-            start_date = latest - timedelta(days=89)
-            end_date = latest
+            st.session_state.date_range_start = latest - timedelta(days=89)
+            st.session_state.date_range_end = latest
+            st.session_state.active_quick_button = "90d"
             st.rerun()
     
-    if st.button("All data"):
-        start_date = min_date
-        end_date = max_date
+    btn_text_all = "✅ All data" if st.session_state.active_quick_button == "all" else "All data"
+    if st.button(btn_text_all, key="btn_all"):
+        st.session_state.date_range_start = min_date
+        st.session_state.date_range_end = max_date
+        st.session_state.active_quick_button = "all"
         st.rerun()
+
+# Data update section
+st.sidebar.markdown("---")
+st.sidebar.header("🔄 Data Management")
+
+latest_date = find_latest_data_date()
+if latest_date:
+    days_behind = (datetime.now().date() - latest_date).days
+    if days_behind > 0:
+        st.sidebar.warning(f"⚠️ Data is {days_behind} day(s) behind")
+    else:
+        st.sidebar.success("✅ Data is up to date")
+    
+    st.sidebar.write(f"**Latest data:** {latest_date}")
+else:
+    st.sidebar.error("❌ No data found")
+
+# Download latest data button
+if st.sidebar.button("🔄 Download Latest Data", type="primary", help="Run the update command to fetch new Fitbit data"):
+    with st.sidebar:
+        with st.spinner("Downloading latest data..."):
+            try:
+                # Run the update command
+                result = subprocess.run(
+                    ["python3", "main.py", "update"], 
+                    cwd=os.path.dirname(os.path.abspath(__file__)),
+                    capture_output=True, 
+                    text=True, 
+                    timeout=300  # 5 minute timeout
+                )
+                
+                if result.returncode == 0:
+                    st.sidebar.success("✅ Data updated successfully!")
+                    st.sidebar.info("🔄 Refreshing dashboard...")
+                    # Clear cache to reload new data
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.sidebar.error(f"❌ Update failed: {result.stderr}")
+                    if result.stdout:
+                        st.sidebar.text("Output:")
+                        st.sidebar.code(result.stdout)
+            except subprocess.TimeoutExpired:
+                st.sidebar.error("⏰ Update timed out after 5 minutes")
+            except Exception as e:
+                st.sidebar.error(f"❌ Error running update: {str(e)}")
+
+# Calculate smart default time aggregation based on date range
+days_selected = (end_date - start_date).days + 1
+if days_selected >= 120:  # 4+ months
+    default_aggregation_index = 2  # Monthly
+elif days_selected >= 70:  # 70+ days
+    default_aggregation_index = 1  # Weekly
+else:
+    default_aggregation_index = 0  # Daily
 
 # Time aggregation selector
 st.sidebar.header("📊 View Options")
 time_aggregation = st.sidebar.selectbox(
     "Time aggregation",
     ["Daily", "Weekly", "Monthly"],
-    index=0,
-    help="Choose how to group your data for easier viewing of long time periods"
+    index=default_aggregation_index,
+    help="Choose how to group your data for easier viewing of long time periods (auto-selected based on date range)"
 )
 
 # Data type selector
@@ -116,7 +200,6 @@ selected_data_types = st.sidebar.multiselect(
 )
 
 # Main dashboard content
-days_selected = (end_date - start_date).days + 1
 st.subheader(f"📈 Health Overview: {start_date} to {end_date} ({days_selected} days)")
 
 # Load and display summary metrics
@@ -213,7 +296,7 @@ with tab1:
                         x='period' if time_aggregation != "Daily" else 'date',
                         y='avg_hr',
                         title=f"{time_aggregation} Average Heart Rate",
-                        labels={'avg_hr': 'Average Heart Rate (BPM)', 'period': 'Period', 'date': 'Date'},
+                        labels={'avg_hr': 'Average Heart Rate (BPM)', 'period': time_aggregation, 'date': 'Date'},
                         color='avg_hr',
                         color_continuous_scale='Reds'
                     )
@@ -243,7 +326,7 @@ with tab1:
                     
                     fig_zones.update_layout(
                         title=f"Heart Rate Zones Over Time ({time_aggregation})",
-                        xaxis_title="Period" if time_aggregation != "Daily" else "Date",
+                        xaxis_title=time_aggregation if time_aggregation != "Daily" else "Date",
                         yaxis_title="Heart Rate (BPM)",
                         height=400
                     )
@@ -269,80 +352,132 @@ with tab2:
     if 'sleep' in selected_data_types and 'sleep' in available_data_types:
         st.subheader("Sleep Analysis")
         
-        # Explain sleep efficiency
-        with st.expander("💡 What is Sleep Efficiency?"):
-            st.write("""
-            **Sleep Efficiency** = (Time Actually Sleeping ÷ Time in Bed) × 100
-            
-            - **85%+ = Excellent** - You're sleeping most of the time you're in bed
-            - **75-84% = Good** - Normal range for most adults  
-            - **65-74% = Fair** - Some room for improvement
-            - **<65% = Poor** - May indicate sleep issues
-            
-            This metric helps track sleep quality beyond just duration.
-            """)
-        
         sleep_data = load_data_type('sleep', start_date, end_date)
         
         if not sleep_data.empty:
-            st.info(f"Displaying {len(sleep_data)} sleep sessions")
+            # Detect naps vs main sleep
+            sleep_data_with_types = detect_naps(sleep_data)
+            
+            # Calculate detailed stats
+            unique_dates = sleep_data_with_types['date'].nunique() if 'date' in sleep_data_with_types.columns else 'Unknown'
+            date_range_days = (end_date - start_date).days + 1
+            sessions_per_day = len(sleep_data_with_types) / unique_dates if isinstance(unique_dates, int) else 'N/A'
+            
+            # Count naps vs main sleep
+            sleep_counts = sleep_data_with_types['sleep_type'].value_counts()
+            main_sleep_count = sleep_counts.get('Main Sleep', 0)
+            nap_count = sleep_counts.get('Nap', 0)
+            
+            st.info(f"📊 Sleep Data: {len(sleep_data_with_types)} sessions ({main_sleep_count} main sleep 🌙 + {nap_count} naps ☀️) across {unique_dates} days | Selected range: {date_range_days} days")
             
             # Sleep duration over time
-            if 'date' in sleep_data.columns and 'minutesAsleep' in sleep_data.columns:
-                sleep_data_copy = sleep_data.copy()
+            if 'date' in sleep_data_with_types.columns and 'minutesAsleep' in sleep_data_with_types.columns:
+                sleep_data_copy = sleep_data_with_types.copy()
                 sleep_data_copy['hoursAsleep'] = sleep_data_copy['minutesAsleep'] / 60
                 
-                # Aggregate sleep data by time period
-                aggregated_sleep = aggregate_data_by_time(sleep_data_copy, time_aggregation, 'minutesAsleep')
-                if not aggregated_sleep.empty:
-                    aggregated_sleep['hoursAsleep'] = aggregated_sleep['minutesAsleep'] / 60
+                # For individual session visualization (daily only)
+                if time_aggregation == "Daily":
+                    # Create stacked bars: main sleep as base, naps as golden crowns on top
+                    daily_sleep = sleep_data_copy.groupby(['date', 'sleep_type'])['hoursAsleep'].sum().reset_index()
                     
+                    # Create stacked bar chart
                     fig = px.bar(
-                        aggregated_sleep,
-                        x='period' if time_aggregation != "Daily" else 'date',
+                        daily_sleep,
+                        x='date',
                         y='hoursAsleep', 
                         title=f"{time_aggregation} Sleep Duration",
-                        labels={'hoursAsleep': 'Hours of Sleep', 'period': 'Period', 'date': 'Date'},
-                        color='hoursAsleep',
-                        color_continuous_scale='Blues'
+                        labels={'hoursAsleep': 'Hours of Sleep', 'date': 'Date'},
+                        color='sleep_type',
+                        color_discrete_map={
+                            'Main Sleep': '#1f77b4',  # Blue base
+                            'Nap': '#ffd700'          # Golden naps on top
+                        }
                     )
+                    
+                    # Update layout for stacking
+                    fig.update_layout(barmode='stack')
+                    
+                    # Add crown emoji annotations on nap segments
+                    nap_data = daily_sleep[daily_sleep['sleep_type'] == 'Nap']
+                    for _, row in nap_data.iterrows():
+                        # Get total sleep for this date to position crown at top
+                        date_total = daily_sleep[daily_sleep['date'] == row['date']]['hoursAsleep'].sum()
+                        fig.add_annotation(
+                            x=row['date'],
+                            y=date_total,
+                            text="👑",
+                            showarrow=False,
+                            font=dict(size=16),
+                            yshift=5  # Slightly above the bar
+                        )
+                    
                     fig.add_hline(y=8, line_dash="dash", annotation_text="8 hours", line_color="green")
                     fig.add_hline(y=7, line_dash="dash", annotation_text="7 hours", line_color="orange")
                     st.plotly_chart(fig, use_container_width=True)
+                else:
+                    # For weekly/monthly, aggregate normally (too complex to show individual sessions)
+                    aggregated_sleep = aggregate_data_by_time(sleep_data_copy, time_aggregation, 'minutesAsleep')
+                    if not aggregated_sleep.empty:
+                        aggregated_sleep['hoursAsleep'] = aggregated_sleep['minutesAsleep'] / 60
+                        
+                        fig = px.bar(
+                            aggregated_sleep,
+                            x='period',
+                            y='hoursAsleep', 
+                            title=f"{time_aggregation} Sleep Duration (Combined)",
+                            labels={'hoursAsleep': 'Hours of Sleep', 'period': time_aggregation},
+                            color='hoursAsleep',
+                            color_continuous_scale='Blues'
+                        )
+                        fig.add_hline(y=8, line_dash="dash", annotation_text="8 hours", line_color="green")
+                        fig.add_hline(y=7, line_dash="dash", annotation_text="7 hours", line_color="orange")
+                        st.plotly_chart(fig, use_container_width=True)
             
             # Sleep efficiency if available
             if 'efficiency' in sleep_data.columns:
-                # For efficiency, we want to average it, not sum it
-                if 'date' in sleep_data.columns:
+                try:
+                    # Use the existing aggregate_data_by_time function but average instead of sum
                     sleep_eff_data = sleep_data.copy()
-                    sleep_eff_data['date'] = pd.to_datetime(sleep_eff_data['date'])
+                    # Create a dummy column for aggregation since we want to average efficiency
+                    sleep_eff_data['efficiency_avg'] = sleep_eff_data['efficiency']
                     
-                    if time_aggregation == "Daily":
-                        result = sleep_eff_data.groupby('date')['efficiency'].mean().reset_index()
-                        result['period'] = result['date'].dt.strftime('%Y-%m-%d')
-                    elif time_aggregation == "Weekly":
-                        sleep_eff_data['week'] = sleep_eff_data['date'].dt.to_period('W-MON')
-                        result = sleep_eff_data.groupby('week')['efficiency'].mean().reset_index()
-                        result['date'] = result['week'].dt.start_time
-                        result['period'] = result['week'].astype(str)
-                    elif time_aggregation == "Monthly":
-                        sleep_eff_data['month'] = sleep_eff_data['date'].dt.to_period('M')
-                        result = sleep_eff_data.groupby('month')['efficiency'].mean().reset_index()
-                        result['date'] = result['month'].dt.start_time
-                        result['period'] = result['month'].dt.strftime('%Y-%m')
-                    
-                    fig_eff = px.bar(
-                        result,
-                        x='period' if time_aggregation != "Daily" else 'date',
-                        y='efficiency',
-                        title=f"{time_aggregation} Sleep Efficiency",
-                        labels={'efficiency': 'Sleep Efficiency (%)', 'period': 'Period', 'date': 'Date'},
-                        color='efficiency',
-                        color_continuous_scale='Greens'
-                    )
-                    fig_eff.add_hline(y=85, line_dash="dash", annotation_text="Excellent (85%+)", line_color="green")
-                    fig_eff.add_hline(y=75, line_dash="dash", annotation_text="Good (75%+)", line_color="orange")
-                    st.plotly_chart(fig_eff, use_container_width=True)
+                    # Aggregate efficiency data by time period (we'll average it manually)
+                    if 'date' in sleep_eff_data.columns:
+                        sleep_eff_data['date'] = pd.to_datetime(sleep_eff_data['date'])
+                        
+                        if time_aggregation == "Daily":
+                            result = sleep_eff_data.groupby('date')['efficiency'].mean().reset_index()
+                            result['period'] = result['date'].dt.strftime('%Y-%m-%d')
+                            x_col = 'date'
+                        elif time_aggregation == "Weekly":
+                            sleep_eff_data['week'] = sleep_eff_data['date'].dt.to_period('W-MON')
+                            result = sleep_eff_data.groupby('week')['efficiency'].mean().reset_index()
+                            result['period'] = result['week'].astype(str)
+                            x_col = 'period'
+                        elif time_aggregation == "Monthly":
+                            sleep_eff_data['month'] = sleep_eff_data['date'].dt.to_period('M')
+                            result = sleep_eff_data.groupby('month')['efficiency'].mean().reset_index()
+                            result['period'] = result['month'].dt.strftime('%Y-%m')
+                            x_col = 'period'
+                        
+                        if not result.empty:
+                            fig_eff = px.bar(
+                                result,
+                                x=x_col,
+                                y='efficiency',
+                                title=f"{time_aggregation} Sleep Efficiency",
+                                labels={'efficiency': 'Sleep Efficiency (%)', 'period': time_aggregation, 'date': 'Date'},
+                                color='efficiency',
+                                color_continuous_scale='Greens'
+                            )
+                            fig_eff.add_hline(y=85, line_dash="dash", annotation_text="Excellent (85%+)", line_color="green")
+                            fig_eff.add_hline(y=75, line_dash="dash", annotation_text="Good (75%+)", line_color="orange")
+                            st.plotly_chart(fig_eff, use_container_width=True)
+                        else:
+                            st.warning("No sleep efficiency data to display")
+                except Exception as e:
+                    st.error(f"Error displaying sleep efficiency: {str(e)}")
+                    st.info("Sleep efficiency data may not be available or properly formatted")
             
             # Sleep stages if available
             if all(col in sleep_data.columns for col in ['deep_minutes', 'light_minutes', 'rem_minutes']):
@@ -394,7 +529,7 @@ with tab3:
                             x='period' if time_aggregation != "Daily" else 'date',
                             y='steps',
                             title=f"🚶 {time_aggregation} Steps",
-                            labels={'steps': 'Steps', 'period': 'Period', 'date': 'Date'},
+                            labels={'steps': 'Steps', 'period': time_aggregation, 'date': 'Date'},
                             color='steps',
                             color_continuous_scale='Greens'
                         )
@@ -443,7 +578,7 @@ with tab3:
                             x='period' if time_aggregation != "Daily" else 'date',
                             y='calories',
                             title=f"🔥 {time_aggregation} Calories Burned",
-                            labels={'calories': 'Calories', 'period': 'Period', 'date': 'Date'},
+                            labels={'calories': 'Calories', 'period': time_aggregation, 'date': 'Date'},
                             color='calories',
                             color_continuous_scale='Oranges'
                         )
@@ -487,7 +622,7 @@ with tab3:
                         x='period' if time_aggregation != "Daily" else 'date',
                         y='distance',
                         title=f"{time_aggregation} Distance Traveled",
-                        labels={'distance': 'Distance (km)', 'period': 'Period', 'date': 'Date'},
+                        labels={'distance': 'Distance (km)', 'period': time_aggregation, 'date': 'Date'},
                         markers=True
                     )
                     fig_dist.update_layout(height=300)
@@ -529,7 +664,7 @@ with tab3:
             x='date',
             y=[col for col in activity_combined.columns if col != 'date'],
             title=f"{time_aggregation} Activity Trends (Steps scaled ÷10 for comparison)",
-            labels={'value': 'Activity Level', 'date': 'Period' if time_aggregation != "Daily" else 'Date', 'variable': 'Metric'}
+            labels={'value': 'Activity Level', 'date': time_aggregation if time_aggregation != "Daily" else 'Date', 'variable': 'Metric'}
         )
         fig_combined.update_layout(height=300)
         st.plotly_chart(fig_combined, use_container_width=True)
