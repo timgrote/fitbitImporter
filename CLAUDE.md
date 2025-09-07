@@ -30,8 +30,12 @@ See [docs/go-approach-summary.md](docs/go-approach-summary.md) for details. Summ
 
 ## Environment Setup
 
-### Check Python Environment
+### Setup Python Environment (Fresh WSL/Ubuntu)
 ```bash
+# Install Python and pip (run this on fresh WSL/Ubuntu instances)
+sudo apt update
+sudo apt install python3 python3-pip python3-venv -y
+
 # Check Python version (need 3.8+)
 python --version
 python3 --version
@@ -53,12 +57,20 @@ lsb_release -a  # Ubuntu/Debian version
 
 ### Initial Setup
 ```bash
+# Install Python and pip (WSL/Ubuntu/Debian)
+sudo apt update
+sudo apt install python3 python3-pip python3-venv -y
+
+# Verify installation
+python3 --version
+pip3 --version
+
 # Clone repository
 git clone https://github.com/yourusername/fitbitImporter.git
 cd fitbitImporter
 
 # Create virtual environment
-python -m venv venv
+python3 -m venv venv
 
 # Activate virtual environment
 source venv/bin/activate  # Linux/Mac

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, date
 import numpy as np
 import subprocess
 import os
+from streamlit_oauth import render_auth_ui
 
 from dashboard_utils import (
     find_latest_data_date,
@@ -128,51 +129,66 @@ with col2:
         st.session_state.active_quick_button = "all"
         st.rerun()
 
-# Data update section
-st.sidebar.markdown("---")
-st.sidebar.header("🔄 Data Management")
+# Fitbit Authentication & Data Management
+auth_result = render_auth_ui()
 
-latest_date = find_latest_data_date()
-if latest_date:
-    days_behind = (datetime.now().date() - latest_date).days
-    if days_behind > 0:
-        st.sidebar.warning(f"⚠️ Data is {days_behind} day(s) behind")
-    else:
-        st.sidebar.success("✅ Data is up to date")
+# Handle authentication results
+if isinstance(auth_result, tuple):
+    auth, action = auth_result
     
-    st.sidebar.write(f"**Latest data:** {latest_date}")
-else:
-    st.sidebar.error("❌ No data found")
-
-# Download latest data button
-if st.sidebar.button("🔄 Download Latest Data", type="primary", help="Run the update command to fetch new Fitbit data"):
-    with st.sidebar:
-        with st.spinner("Downloading latest data..."):
-            try:
-                # Run the update command
-                result = subprocess.run(
-                    ["python3", "main.py", "update"], 
-                    cwd=os.path.dirname(os.path.abspath(__file__)),
-                    capture_output=True, 
-                    text=True, 
-                    timeout=300  # 5 minute timeout
-                )
-                
-                if result.returncode == 0:
-                    st.sidebar.success("✅ Data updated successfully!")
-                    st.sidebar.info("🔄 Refreshing dashboard...")
-                    # Clear cache to reload new data
-                    st.cache_data.clear()
-                    st.rerun()
-                else:
-                    st.sidebar.error(f"❌ Update failed: {result.stderr}")
-                    if result.stdout:
-                        st.sidebar.text("Output:")
-                        st.sidebar.code(result.stdout)
-            except subprocess.TimeoutExpired:
-                st.sidebar.error("⏰ Update timed out after 5 minutes")
-            except Exception as e:
-                st.sidebar.error(f"❌ Error running update: {str(e)}")
+    # Show data status
+    latest_date = find_latest_data_date()
+    if latest_date:
+        days_behind = (datetime.now().date() - latest_date).days
+        if days_behind > 0:
+            st.sidebar.warning(f"⚠️ Data is {days_behind} day(s) behind")
+        else:
+            st.sidebar.success("✅ Data is up to date")
+        st.sidebar.write(f"**Latest data:** {latest_date}")
+    else:
+        st.sidebar.error("❌ No data found")
+    
+    # Handle update action
+    if action == "update":
+        with st.sidebar:
+            status_container = st.empty()
+            progress_container = st.empty()
+            message_container = st.empty()
+            
+            status_container.info("🚀 Starting authenticated Fitbit data download...")
+            
+            # Create progress callback to show messages
+            progress_messages = []
+            def progress_callback(message):
+                progress_messages.append(message)
+                # Show last 3 messages
+                recent_messages = progress_messages[-3:]
+                message_container.text("\\n".join(recent_messages))
+            
+            # Use the authenticated update system with progress callback
+            success, output = auth.run_authenticated_update(progress_callback=progress_callback)
+            
+            if success:
+                status_container.success("✅ Data updated successfully!")
+                progress_container.info("🔄 Refreshing dashboard...")
+                st.cache_data.clear()
+                st.rerun()
+            else:
+                status_container.error("❌ Update failed")
+                with st.sidebar.expander("🔍 Error Details", expanded=True):
+                    st.code(output)
+elif auth_result:
+    # Single auth object returned (authenticated)
+    latest_date = find_latest_data_date()
+    if latest_date:
+        days_behind = (datetime.now().date() - latest_date).days
+        if days_behind > 0:
+            st.sidebar.warning(f"⚠️ Data is {days_behind} day(s) behind")
+        else:
+            st.sidebar.success("✅ Data is up to date")
+        st.sidebar.write(f"**Latest data:** {latest_date}")
+    else:
+        st.sidebar.error("❌ No data found")
 
 # Calculate smart default time aggregation based on date range
 days_selected = (end_date - start_date).days + 1

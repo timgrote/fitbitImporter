@@ -65,7 +65,7 @@ class SmartUpdater:
         priority_gaps.sort(key=lambda x: x[3])
         return priority_gaps
         
-    def calculate_download_strategy(self, dry_run: bool = False) -> Dict:
+    def calculate_download_strategy(self, dry_run: bool = False, recent_only: bool = False) -> Dict:
         """Calculate what needs to be downloaded."""
         strategy = {
             'recent_data': None,
@@ -91,12 +91,14 @@ class SmartUpdater:
             strategy['recent_data'] = (recent_start, today, self.update_recent_days)
             strategy['total_days'] += self.update_recent_days
             
-        # Find priority gaps to fill
-        priority_gaps = self.find_priority_gaps()
-        strategy['priority_gaps'] = priority_gaps
-        
-        for _, _, _, gap_days in priority_gaps:
-            strategy['total_days'] += gap_days
+        # Skip gap finding if recent_only mode
+        if not recent_only:
+            # Find priority gaps to fill
+            priority_gaps = self.find_priority_gaps()
+            strategy['priority_gaps'] = priority_gaps
+            
+            for _, _, _, gap_days in priority_gaps:
+                strategy['total_days'] += gap_days
             
         # Estimate API requests (roughly 1 request per day per data type)
         # We download multiple types per day, so estimate conservatively
@@ -225,7 +227,7 @@ class SmartUpdater:
         click.echo("="*40)
         
         # Calculate download strategy
-        strategy = self.calculate_download_strategy(dry_run)
+        strategy = self.calculate_download_strategy(dry_run, recent_only)
         
         # Show what will be downloaded
         self.print_download_strategy(strategy)

@@ -97,6 +97,28 @@ This gives you years of data instantly:
 
    That's it! No date configuration needed - the smart updater handles everything automatically.
 
+### 4. 📊 Interactive Health Dashboard (NEW!)
+
+Launch the browser-based dashboard for easy authentication and data management:
+
+```bash
+streamlit run dashboard.py
+```
+
+**Features:**
+- 🔐 **Browser-Only OAuth**: Click a button to authenticate - no terminal interaction needed!
+- 📊 **Real-Time Download Progress**: See live updates as your data downloads
+- 📈 **Health Visualizations**: Interactive charts for heart rate, sleep, steps, calories
+- 🎯 **Smart Date Ranges**: Automatic optimal time aggregation based on data range
+- 👑 **Nap Detection**: Visual indicators for daytime naps in sleep charts
+
+**Authentication Flow:**
+1. Click "🔐 Authenticate with Fitbit" 
+2. Click the green authorization button that appears
+3. Log in to Fitbit (Google/email/any method)
+4. Return to dashboard - authentication completes automatically!
+5. Click "🔄 Update Data" to download recent data with live progress
+
 3. **Stay Up to Date**:
    ```bash
    # Smart update: automatically downloads only missing/new data

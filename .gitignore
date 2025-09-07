@@ -38,6 +38,7 @@ config.json
 fitbit-api-secrets.txt
 *secrets*
 .fitbit_token.json
+.streamlit_fitbit_tokens.json
 
 # Personal health data folders - NEVER commit personal data
 data/
