@@ -40,6 +40,13 @@ fitbit-api-secrets.txt
 .fitbit_token.json
 .streamlit_fitbit_tokens.json
 
+# AI API keys and config
+ai_config.ini
+
+# AI debug logs and cache
+debug_ai_logs/
+sleep_animals_cache/
+
 # Personal health data folders - NEVER commit personal data
 data/
 takeout_data/*

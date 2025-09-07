@@ -25,6 +25,7 @@ from dashboard_utils import (
     format_number,
     detect_naps
 )
+from sleep_animal_generator import SleepAnimalGenerator
 
 # Page configuration
 st.set_page_config(
@@ -317,7 +318,7 @@ with tab1:
                         color_continuous_scale='Reds'
                     )
                     fig.update_layout(height=400)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                     
                     # Heart rate zones (min, resting, avg, max)
                     fig_zones = go.Figure()
@@ -346,7 +347,7 @@ with tab1:
                         yaxis_title="Heart Rate (BPM)",
                         height=400
                     )
-                    st.plotly_chart(fig_zones, use_container_width=True)
+                    st.plotly_chart(fig_zones, width='stretch')
             
             # Heart rate distribution
             fig_hist = px.histogram(
@@ -357,7 +358,7 @@ with tab1:
                 nbins=50,
                 color_discrete_sequence=['lightcoral']
             )
-            st.plotly_chart(fig_hist, use_container_width=True)
+            st.plotly_chart(fig_hist, width='stretch')
             
         else:
             st.warning("No heart rate data available for selected date range")
@@ -367,6 +368,82 @@ with tab1:
 with tab2:
     if 'sleep' in selected_data_types and 'sleep' in available_data_types:
         st.subheader("Sleep Analysis")
+        
+        # Weekly Sleep Animal
+        try:
+            sleep_generator = SleepAnimalGenerator()
+            if sleep_generator.is_configured():
+                with st.expander("🦊 This Week's Sleep Spirit Animal", expanded=True):
+                    animal_data = sleep_generator.generate_weekly_animal()
+                    
+                    # Display animal info
+                    st.markdown(f"### {animal_data['animal']}")
+                    st.markdown(f"**{animal_data['title']}**")
+                    
+                    # Check if we have multiple images
+                    has_images = 'image_urls' in animal_data and isinstance(animal_data['image_urls'], dict)
+                    
+                    if has_images and (animal_data['image_urls'].get('xai') or animal_data['image_urls'].get('openrouter') or animal_data['image_urls'].get('nanobanana')):
+                        # Show all three images side by side
+                        st.markdown("#### AI-Generated Images")
+                        img_col1, img_col2, img_col3 = st.columns(3)
+                        
+                        with img_col1:
+                            if animal_data['image_urls'].get('xai'):
+                                st.markdown("**🤖 XAI (Grok)**")
+                                try:
+                                    st.image(animal_data['image_urls']['xai'], caption="XAI Generated", width='stretch')
+                                    st.success("✅ Successfully generated!")
+                                except Exception as e:
+                                    st.error(f"Could not load XAI image: {str(e)}")
+                            else:
+                                st.markdown("**🤖 XAI (Grok)**")
+                                st.warning("⚠️ Image generation failed - check API parameters")
+                        
+                        with img_col2:
+                            if animal_data['image_urls'].get('openrouter'):
+                                st.markdown("**🔍 OpenRouter (Gemini)**")
+                                try:
+                                    st.image(animal_data['image_urls']['openrouter'], caption="OpenRouter Generated", width='stretch')
+                                    st.success("✅ Successfully generated!")
+                                except Exception as e:
+                                    st.error(f"Could not load OpenRouter image: {str(e)}")
+                            else:
+                                st.markdown("**🔍 OpenRouter (Gemini)**")
+                                st.warning("💳 Insufficient credits - upgrade OpenRouter account")
+                        
+                        with img_col3:
+                            if animal_data['image_urls'].get('nanobanana'):
+                                st.markdown("**🍌 Nano Banana (Google AI)**")
+                                try:
+                                    st.image(animal_data['image_urls']['nanobanana'], caption="Nano Banana Generated", width='stretch')
+                                    st.success("✅ Successfully generated!")
+                                except Exception as e:
+                                    st.error(f"Could not load Nano Banana image: {str(e)}")
+                            else:
+                                st.markdown("**🍌 Nano Banana (Google AI)**")
+                                st.warning("🔑 API key needed - add Google AI key")
+                    
+                    elif 'image_url' in animal_data and animal_data['image_url']:
+                        # Fallback to single image display
+                        try:
+                            st.image(animal_data['image_url'], caption=f"{animal_data['animal']}", width='stretch')
+                        except Exception as e:
+                            st.error(f"Could not load image: {str(e)}")
+                    
+                    # Show traits as badges
+                    st.markdown("**Traits:**")
+                    traits_text = " • ".join([f"*{trait}*" for trait in animal_data['traits']])
+                    st.markdown(traits_text)
+                    
+                    st.markdown(f"**Description:** {animal_data['description']}")
+                    st.markdown(f"💭 **Wisdom:** *{animal_data['sleep_wisdom']}*")
+                    
+                    st.markdown("---")
+            else:
+                st.info("🦊 Sleep Animals feature available! Add AI API keys to `ai_config.ini` to enable weekly spirit animals.")
+        except Exception as e:
+            st.warning(f"Sleep Animals temporarily unavailable: {str(e)}")
         
         sleep_data = load_data_type('sleep', start_date, end_date)
         
@@ -429,7 +506,7 @@ with tab2:
                     
                     fig.add_hline(y=8, line_dash="dash", annotation_text="8 hours", line_color="green")
                     fig.add_hline(y=7, line_dash="dash", annotation_text="7 hours", line_color="orange")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                 else:
                     # For weekly/monthly, aggregate normally (too complex to show individual sessions)
                     aggregated_sleep = aggregate_data_by_time(sleep_data_copy, time_aggregation, 'minutesAsleep')
@@ -447,7 +524,7 @@ with tab2:
                         )
                         fig.add_hline(y=8, line_dash="dash", annotation_text="8 hours", line_color="green")
                         fig.add_hline(y=7, line_dash="dash", annotation_text="7 hours", line_color="orange")
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width='stretch')
             
             # Sleep efficiency if available
             if 'efficiency' in sleep_data.columns:
@@ -488,7 +565,7 @@ with tab2:
                             )
                             fig_eff.add_hline(y=85, line_dash="dash", annotation_text="Excellent (85%+)", line_color="green")
                             fig_eff.add_hline(y=75, line_dash="dash", annotation_text="Good (75%+)", line_color="orange")
-                            st.plotly_chart(fig_eff, use_container_width=True)
+                            st.plotly_chart(fig_eff, width='stretch')
                         else:
                             st.warning("No sleep efficiency data to display")
                 except Exception as e:
@@ -516,7 +593,7 @@ with tab2:
                     barmode='stack',
                     height=400
                 )
-                st.plotly_chart(fig_stages, use_container_width=True)
+                st.plotly_chart(fig_stages, width='stretch')
                 
         else:
             st.warning("No sleep data available for selected date range")
@@ -560,7 +637,7 @@ with tab3:
                             fig_steps.add_hline(y=300000, line_dash="dash", annotation_text="300K Monthly", line_color="green")
                         
                         fig_steps.update_layout(height=400)
-                        st.plotly_chart(fig_steps, use_container_width=True)
+                        st.plotly_chart(fig_steps, width='stretch')
                         
                         # Steps summary with proper formatting
                         total_steps = aggregated_steps['steps'].sum()
@@ -608,7 +685,7 @@ with tab3:
                             fig_cal.add_hline(y=60000, line_dash="dash", annotation_text="60K Monthly", line_color="orange")
                         
                         fig_cal.update_layout(height=400)
-                        st.plotly_chart(fig_cal, use_container_width=True)
+                        st.plotly_chart(fig_cal, width='stretch')
                         
                         # Calories summary with proper formatting
                         avg_calories = aggregated_calories['calories'].mean()
@@ -642,7 +719,7 @@ with tab3:
                         markers=True
                     )
                     fig_dist.update_layout(height=300)
-                    st.plotly_chart(fig_dist, use_container_width=True)
+                    st.plotly_chart(fig_dist, width='stretch')
                     
                     # Distance summary
                     avg_distance = aggregated_distance['distance'].mean()
@@ -683,7 +760,7 @@ with tab3:
             labels={'value': 'Activity Level', 'date': time_aggregation if time_aggregation != "Daily" else 'Date', 'variable': 'Metric'}
         )
         fig_combined.update_layout(height=300)
-        st.plotly_chart(fig_combined, use_container_width=True)
+        st.plotly_chart(fig_combined, width='stretch')
 
 with tab4:
     st.subheader("Health Trends & Correlations")
